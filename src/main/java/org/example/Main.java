@@ -1,7 +1,15 @@
 package org.example;
 
-public class Main {
+import com.almasb.fxgl.app.GameApplication;
+import com.almasb.fxgl.app.GameSettings;
+
+public class Main extends GameApplication {
     public static void main(String[] args) {
-        System.out.println("Goodbye world!");
+        launch(args);
+    }
+
+    @Override
+    protected void initSettings(GameSettings gameSettings) {
+
     }
 }
