@@ -16,14 +16,17 @@ public class GridFactory implements EntityFactory {
     @Spawns("cell")
     public Entity newCell(SpawnData data) {
         return FXGL.entityBuilder(data)
-                .view(new Rectangle(BLOCK_SIZE,BLOCK_SIZE, Color.LIGHTGRAY))
+                .view(new Rectangle(BLOCK_SIZE,BLOCK_SIZE,Color.LIGHTGRAY))
+                .with(new CellComponent())
                 .build();
     }
 
     @Spawns("player")
     public Entity newPlayer(SpawnData data) {
         return FXGL.entityBuilder(data)
-                .view(new Rectangle(20, 20, Color.BLUE))
+                .view("steve.png")
+                //.view(new Rectangle(20, 20, Color.RED))
+                .zIndex(100)
                 .build();
     }
 

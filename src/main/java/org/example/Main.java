@@ -11,12 +11,19 @@ import javafx.geometry.Rectangle2D;
 import javafx.scene.input.KeyCode;
 import javafx.util.Duration;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Stack;
+
 import static com.almasb.fxgl.dsl.FXGL.*;
 
 public class Main extends GameApplication {
     private static final int BLOCK_SIZE = 20;
     private Entity player;
     private boolean moving = false;
+    private Entity[][] cells;
+    private Stack<Entity> trail = new Stack<>();
+    private Set<Entity> territory = new HashSet<>();
 
     public static void main(String[] args) {
         launch(args);
@@ -62,26 +69,30 @@ public class Main extends GameApplication {
         getGameWorld()
                 .addEntityFactory(new GridFactory());
 
+        cells = new Entity[40][40];
+        int[][] initialTerritoryPositions = {
+                {19, 20}, {19, 19}, {20, 19}, {20, 20}, {21, 19},
+                {21, 20}, {21, 21}, {20, 21}, {19, 21}
+        };
+
+        player = spawn("player", 400, 400);
         for (int y = 0; y < 40; y++) {
             for (int x = 0; x < 40; x++) {
-                spawn("cell", x * BLOCK_SIZE, y * BLOCK_SIZE);
+                cells[x][y] = spawn("cell", x * BLOCK_SIZE, y * BLOCK_SIZE);
             }
         }
 
-        player = FXGL.spawn("player", 400, 400);
-/*        spawn("enemy", 100, 100);
+        for (int[] position : initialTerritoryPositions) {
+            Entity cell = cells[position[0]][position[1]];
+            cell.getComponent(CellComponent.class).setOwner(player);
+            territory.add(cell);
+        }
 
-        spawn("ally", 600, 100);
 
-        run(() -> {
-            spawn("ally", FXGLMath.randomPoint(
-                    new Rectangle2D(0,0, getAppWidth(), getAppHeight())));
-            spawn("enemy", FXGLMath.randomPoint(
-                    new Rectangle2D(0,0, getAppWidth(), getAppHeight())));
-            spawn("cell", FXGLMath.randomPoint(
-                    new Rectangle2D(0,0, getAppWidth(), getAppHeight())));
-
-        }, Duration.seconds(1));*/
+/*        Entity startingCell = cells[20][20];
+        startingCell.getComponent(CellComponent.class).setOwner(player);
+        territory.add(startingCell);*/
+        System.out.println("STARTING TERRR:" + territory);
     }
 
     @Override
@@ -97,6 +108,29 @@ public class Main extends GameApplication {
         if (moving) {
             return;
         }
+        int cellX = (int) player.getX() / BLOCK_SIZE;
+        int cellY = (int) player.getY() / BLOCK_SIZE;
+        Entity currentCell = cells[cellX][cellY];
+
+        if (territory.contains(currentCell)) {
+            if (!trail.empty()) {
+                // Player has returned to territory, claim the cells in the trail
+                returnToTerritory();
+                System.out.println("NEW TERRIROTY:" + territory);
+            }
+        }
+        else {
+            if (trail.contains(currentCell)) {
+                // Player has collided with their own trail, game over
+                gameOver();
+                return;
+            }
+            trail.push(currentCell);
+        }
+
+        currentCell.getComponent(CellComponent.class).setOwner(player);
+
+
         double futureX = player.getX() + dx;
         double futureY = player.getY() + dy;
 
@@ -114,5 +148,17 @@ public class Main extends GameApplication {
                 }
             }, Duration.seconds(0.2));
         }
+    }
+
+    private void returnToTerritory() {
+        while (!trail.empty()) {
+            Entity cell = trail.pop();
+            territory.add(cell);
+        }
+    }
+
+    private void gameOver() {
+        moving = false;
+        FXGL.showMessage("Game Over!");
     }
 }
