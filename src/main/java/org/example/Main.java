@@ -118,8 +118,7 @@ public class Main extends GameApplication {
                 returnToTerritory();
                 System.out.println("NEW TERRIROTY:" + territory);
             }
-        }
-        else {
+        } else {
             if (trail.contains(currentCell)) {
                 // Player has collided with their own trail, game over
                 gameOver();
@@ -151,10 +150,123 @@ public class Main extends GameApplication {
     }
 
     private void returnToTerritory() {
+        if (trail.empty()) {
+            return;
+        }
+
+        // First, get the last cell of the trail.
+        Entity lastCell = trail.peek();
+
+        // Then, add all the cells in the trail to the territory.
         while (!trail.empty()) {
             Entity cell = trail.pop();
             territory.add(cell);
         }
+
+        // Get the coordinates of the last cell.
+        int lastCellX = (int) lastCell.getX() / BLOCK_SIZE;
+        int lastCellY = (int) lastCell.getY() / BLOCK_SIZE;
+
+        // Now, go through each cell that is adjacent to the last cell of the trail.
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                // Compute the coordinates of the adjacent cell.
+                int cellX = lastCellX + dx;
+                int cellY = lastCellY + dy;
+
+                // Check if the cell is within the grid and not part of the territory or the trail.
+                if (cellX >= 0 && cellX < cells.length && cellY >= 0 && cellY < cells[cellX].length) {
+                    Entity cell = cells[cellX][cellY];
+                    if (!territory.contains(cell) && !trail.contains(cell)) {
+                        // Use this cell as the starting point of the verification flood fill.
+                        if (verificationFloodFill(cell)) {
+                            // If the verification flood fill did not reach the edges of the grid,
+                            // the selected cell is inside the new territory.
+                            // Now, start the actual flood fill from this cell.
+                            floodFill(cell);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void floodFill(Entity startCell) {
+        System.out.println("called floodFill:" + startCell);
+        if (startCell.getComponent(CellComponent.class).getOwner() != null) {
+            // This cell is already owned, so we don't need to fill it.
+            return;
+        }
+
+        // Stack is used to implement flood fill iteratively instead of recursively.
+        Stack<Entity> stack = new Stack<>();
+        stack.push(startCell);
+
+        while (!stack.empty()) {
+            Entity cell = stack.pop();
+            CellComponent cellComponent = cell.getComponent(CellComponent.class);
+            if (cellComponent.getOwner() == null) {
+                cellComponent.setOwner(player);
+                territory.add(cell);
+
+                // Get neighboring cells and push them onto the stack.
+                int cellX = (int) cell.getX() / BLOCK_SIZE;
+                int cellY = (int) cell.getY() / BLOCK_SIZE;
+
+                if (cellX > 0) stack.push(cells[cellX - 1][cellY]);
+                if (cellX < cells.length - 1) stack.push(cells[cellX + 1][cellY]);
+                if (cellY > 0) stack.push(cells[cellX][cellY - 1]);
+                if (cellY < cells[cellX].length - 1) stack.push(cells[cellX][cellY + 1]);
+            }
+        }
+    }
+
+
+    private boolean verificationFloodFill(Entity startCell) {
+        // The verification flood fill works like the regular flood fill but does not modify the grid.
+        // It only checks if the flood fill can reach the edges of the grid from the start cell.
+
+        // Create a set to keep track of the cells that have been visited by the verification flood fill.
+        Set<Entity> visited = new HashSet<>();
+
+        // Use a stack to implement the flood fill without recursion.
+        Stack<Entity> stack = new Stack<>();
+        stack.push(startCell);
+
+        while (!stack.empty()) {
+            Entity cell = stack.pop();
+            visited.add(cell);
+
+            // Get the coordinates of the cell.
+            int cellX = (int) cell.getX() / BLOCK_SIZE;
+            int cellY = (int) cell.getY() / BLOCK_SIZE;
+
+            // Check if the flood fill has reached the edges of the grid.
+            if (cellX == 0 || cellX == cells.length - 1 || cellY == 0 || cellY == cells[cellX].length - 1) {
+                // The flood fill has reached the edges of the grid, which means the start cell is outside the new territory.
+                return false;
+            }
+
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    // Compute the coordinates of the adjacent cell.
+                    int adjacentCellX = cellX + dx;
+                    int adjacentCellY = cellY + dy;
+
+                    // Check if the cell is within the grid, not part of the territory or the trail, and has not been visited yet.
+                    if (adjacentCellX >= 0 && adjacentCellX < cells.length && adjacentCellY >= 0 && adjacentCellY < cells[adjacentCellX].length) {
+                        Entity adjacentCell = cells[adjacentCellX][adjacentCellY];
+                        if (!territory.contains(adjacentCell) && !trail.contains(adjacentCell) && !visited.contains(adjacentCell)) {
+                            stack.push(adjacentCell);
+                        }
+                    }
+                }
+            }
+        }
+
+        // The flood fill did not reach the edges of the grid, which means the start cell is inside the new territory.
+        return true;
     }
 
     private void gameOver() {
