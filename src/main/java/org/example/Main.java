@@ -11,9 +11,7 @@ import javafx.geometry.Rectangle2D;
 import javafx.scene.input.KeyCode;
 import javafx.util.Duration;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.Stack;
+import java.util.*;
 
 import static com.almasb.fxgl.dsl.FXGL.*;
 
@@ -145,7 +143,7 @@ public class Main extends GameApplication {
                 public void run() {
                     moving = false;
                 }
-            }, Duration.seconds(0.2));
+            }, Duration.seconds(0.1));
         }
     }
 
@@ -154,37 +152,38 @@ public class Main extends GameApplication {
             return;
         }
 
-        // First, get the last cell of the trail.
-        Entity lastCell = trail.peek();
-
-        // Then, add all the cells in the trail to the territory.
+        // Add all the cells in the trail to the territory and also to a list of starting points for the flood fill.
+        List<Entity> startingPoints = new ArrayList<>();
         while (!trail.empty()) {
             Entity cell = trail.pop();
             territory.add(cell);
+            startingPoints.add(cell);
         }
 
-        // Get the coordinates of the last cell.
-        int lastCellX = (int) lastCell.getX() / BLOCK_SIZE;
-        int lastCellY = (int) lastCell.getY() / BLOCK_SIZE;
+        // Now, go through each cell in the starting points list.
+        for (Entity startingPoint : startingPoints) {
+            // Get the coordinates of the starting point.
+            int startX = (int) startingPoint.getX() / BLOCK_SIZE;
+            int startY = (int) startingPoint.getY() / BLOCK_SIZE;
 
-        // Now, go through each cell that is adjacent to the last cell of the trail.
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                // Compute the coordinates of the adjacent cell.
-                int cellX = lastCellX + dx;
-                int cellY = lastCellY + dy;
+            // Go through each cell that is adjacent to the starting point.
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    // Compute the coordinates of the adjacent cell.
+                    int cellX = startX + dx;
+                    int cellY = startY + dy;
 
-                // Check if the cell is within the grid and not part of the territory or the trail.
-                if (cellX >= 0 && cellX < cells.length && cellY >= 0 && cellY < cells[cellX].length) {
-                    Entity cell = cells[cellX][cellY];
-                    if (!territory.contains(cell) && !trail.contains(cell)) {
-                        // Use this cell as the starting point of the verification flood fill.
-                        if (verificationFloodFill(cell)) {
-                            // If the verification flood fill did not reach the edges of the grid,
-                            // the selected cell is inside the new territory.
-                            // Now, start the actual flood fill from this cell.
-                            floodFill(cell);
-                            return;
+                    // Check if the cell is within the grid and not part of the territory or the trail.
+                    if (cellX >= 0 && cellX < cells.length && cellY >= 0 && cellY < cells[cellX].length) {
+                        Entity cell = cells[cellX][cellY];
+                        if (!territory.contains(cell) && !trail.contains(cell)) {
+                            // Use this cell as the starting point of the verification flood fill.
+                            if (verificationFloodFill(cell)) {
+                                // If the verification flood fill did not reach the edges of the grid,
+                                // the selected cell is inside the new territory.
+                                // Now, start the actual flood fill from this cell.
+                                floodFill(cell);
+                            }
                         }
                     }
                 }
@@ -199,25 +198,25 @@ public class Main extends GameApplication {
             return;
         }
 
-        // Stack is used to implement flood fill iteratively instead of recursively.
-        Stack<Entity> stack = new Stack<>();
-        stack.push(startCell);
+        // Queue is used to implement flood fill iteratively instead of recursively.
+        Queue<Entity> queue = new LinkedList<>();
+        queue.add(startCell);
 
-        while (!stack.empty()) {
-            Entity cell = stack.pop();
+        while (!queue.isEmpty()) {
+            Entity cell = queue.remove();
             CellComponent cellComponent = cell.getComponent(CellComponent.class);
             if (cellComponent.getOwner() == null) {
                 cellComponent.setOwner(player);
                 territory.add(cell);
 
-                // Get neighboring cells and push them onto the stack.
+                // Get neighboring cells and add them to the queue.
                 int cellX = (int) cell.getX() / BLOCK_SIZE;
                 int cellY = (int) cell.getY() / BLOCK_SIZE;
 
-                if (cellX > 0) stack.push(cells[cellX - 1][cellY]);
-                if (cellX < cells.length - 1) stack.push(cells[cellX + 1][cellY]);
-                if (cellY > 0) stack.push(cells[cellX][cellY - 1]);
-                if (cellY < cells[cellX].length - 1) stack.push(cells[cellX][cellY + 1]);
+                if (cellX > 0) queue.add(cells[cellX - 1][cellY]);
+                if (cellX < cells.length - 1) queue.add(cells[cellX + 1][cellY]);
+                if (cellY > 0) queue.add(cells[cellX][cellY - 1]);
+                if (cellY < cells[cellX].length - 1) queue.add(cells[cellX][cellY + 1]);
             }
         }
     }
