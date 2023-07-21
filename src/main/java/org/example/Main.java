@@ -7,6 +7,7 @@ import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.input.Input;
 import com.almasb.fxgl.input.UserAction;
+import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.input.KeyCode;
 import javafx.util.Duration;
@@ -86,6 +87,8 @@ public class Main extends GameApplication {
             territory.add(cell);
         }
 
+        var viewPort = getGameScene().getViewport();
+        viewPort.bindToEntity(player, 400, 400);
 
 /*        Entity startingCell = cells[20][20];
         startingCell.getComponent(CellComponent.class).setOwner(player);
@@ -101,6 +104,7 @@ public class Main extends GameApplication {
         gameSettings.setVersion("0.1");
         gameSettings.setIntroEnabled(false);
     }
+
 
     private void movePlayer(int dx, int dy) {
         if (moving) {
