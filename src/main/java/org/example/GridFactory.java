@@ -22,6 +22,7 @@ public class GridFactory implements EntityFactory {
         view.setStrokeWidth(0.4);
         return FXGL.entityBuilder(data)
                 .view(view)
+                .type(EntityType.CELL)
                 .with(new CellComponent())
                 .build();
     }
@@ -30,6 +31,7 @@ public class GridFactory implements EntityFactory {
     public Entity newPlayer(SpawnData data) {
         return FXGL.entityBuilder(data)
                 .view("steve.png")
+                .type(EntityType.PLAYER)
                 .zIndex(100)
                 .build();
     }
