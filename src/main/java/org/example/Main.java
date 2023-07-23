@@ -22,7 +22,7 @@ public class Main extends GameApplication {
     private static int MAX_Y = 39;
     private static int MIN_X = 0;
     private static int MIN_Y = 0;
-    private static final int BOUND_TARGET = 11;
+    private static final int BOUND_TARGET = 5;
     private Entity player;
     private boolean moving = false;
     private Entity[][] cells;
@@ -95,19 +95,12 @@ public class Main extends GameApplication {
         getGameWorld()
                 .addEntityFactory(new GridFactory());
 
-        cells = new Entity[40][40];
         int[][] initialTerritoryPositions = {
                 {19, 20}, {19, 19}, {20, 19}, {20, 20}, {21, 19},
                 {21, 20}, {21, 21}, {20, 21}, {19, 21}
         };
 
         player = spawn("player", 400, 400);
-/*        for (int y = 0; y < 40; y++) {
-            for (int x = 0; x < 40; x++) {
-                cells[x][y] = spawn("cell", x * BLOCK_SIZE, y * BLOCK_SIZE);
-            }
-        }*/
-
 
         for (int x = 0; x <= MAX_X; x++) {
             var map = new HashMap<Integer, Entity>();
@@ -116,12 +109,6 @@ public class Main extends GameApplication {
             }
             mapOfCells.put(x, map);
         }
-
-/*        for (int[] position : initialTerritoryPositions) {
-            Entity cell = cells[position[0]][position[1]];
-            cell.getComponent(CellComponent.class).setOwner(player);
-            territory.add(cell);
-        }*/
 
         for (int[] position : initialTerritoryPositions) {
             Entity cell = mapOfCells.get(position[0]).get(position[1]);
@@ -134,9 +121,6 @@ public class Main extends GameApplication {
         //viewPort.setZoom(1.83);
         //viewPort.setBounds(0,0,800,800);
 
-/*        Entity startingCell = cells[20][20];
-        startingCell.getComponent(CellComponent.class).setOwner(player);
-        territory.add(startingCell);*/
         System.out.println("STARTING TERRR:" + territory);
     }
 
@@ -204,7 +188,6 @@ public class Main extends GameApplication {
         }
         int cellX = (int) player.getX() / BLOCK_SIZE;
         int cellY = (int) player.getY() / BLOCK_SIZE;
-        //Entity currentCell = cells[cellX][cellY];
         Entity currentCell = mapOfCells.get(cellX).get(cellY);
 
 
@@ -272,18 +255,6 @@ public class Main extends GameApplication {
                     int cellY = startY + dy;
                     int xLength = mapOfCells.size();
                     // Check if the cell is within the grid and not part of the territory or the trail.
-/*                    if (cellX >= 0 && cellX < cells.length && cellY >= 0 && cellY < cells[cellX].length) {
-                        Entity cell = cells[cellX][cellY];
-                        if (!territory.contains(cell) && !trail.contains(cell)) {
-                            // Use this cell as the starting point of the verification flood fill.
-                            if (verificationFloodFill(cell)) {
-                                // If the verification flood fill did not reach the edges of the grid,
-                                // the selected cell is inside the new territory.
-                                // Now, start the actual flood fill from this cell.
-                                floodFill(cell);
-                            }
-                        }
-                    }*/
 
                     if (cellX >= 0 && cellX < xLength && cellY >= 0 && cellY < mapOfCells.get(cellX).size()) {
                         Entity cell = mapOfCells.get(cellX).get(cellY);
@@ -324,10 +295,6 @@ public class Main extends GameApplication {
                 int cellX = (int) cell.getX() / BLOCK_SIZE;
                 int cellY = (int) cell.getY() / BLOCK_SIZE;
 
-/*                if (cellX > 0) queue.add(cells[cellX - 1][cellY]);
-                if (cellX < cells.length - 1) queue.add(cells[cellX + 1][cellY]);
-                if (cellY > 0) queue.add(cells[cellX][cellY - 1]);
-                if (cellY < cells[cellX].length - 1) queue.add(cells[cellX][cellY + 1]);*/
 
                 if (cellX > 0) queue.add(mapOfCells.get(cellX - 1).get(cellY));
                 if (cellX < mapOfCells.size() - 1) queue.add(mapOfCells.get(cellX + 1).get(cellY));
@@ -388,11 +355,6 @@ public class Main extends GameApplication {
             int cellX = (int) cell.getX() / BLOCK_SIZE;
             int cellY = (int) cell.getY() / BLOCK_SIZE;
 
-            // Check if the flood fill has reached the edges of the grid.
-/*            if (cellX == 0 || cellX == cells.length - 1 || cellY == 0 || cellY == cells[cellX].length - 1) {
-                // The flood fill has reached the edges of the grid, which means the start cell is outside the new territory.
-                return false;
-            }*/
 
             if (cellX == 0 || cellX == mapOfCells.size() - 1 || cellY == 0 || cellY == mapOfCells.get(cellY).size() - 1) {
                 // The flood fill has reached the edges of the grid, which means the start cell is outside the new territory.
@@ -406,13 +368,7 @@ public class Main extends GameApplication {
                     int adjacentCellY = cellY + dy;
                     System.out.println("CELLX:" + cellX + " ADJ CELLX:" + adjacentCellX);
 
-/*                    // Check if the cell is within the grid, not part of the territory or the trail, and has not been visited yet.
-                    if (adjacentCellX >= 0 && adjacentCellX < cells.length && adjacentCellY >= 0 && adjacentCellY < cells[adjacentCellX].length) {
-                        Entity adjacentCell = cells[adjacentCellX][adjacentCellY];
-                        if (!territory.contains(adjacentCell) && !trail.contains(adjacentCell) && !visited.contains(adjacentCell)) {
-                            stack.push(adjacentCell);
-                        }
-                    }*/
+                    // Check if the cell is within the grid, not part of the territory or the trail, and has not been visited yet.
 
                     if (mapOfCells.get(adjacentCellX) != null) {
                         // Check if the cell is within the grid, not part of the territory or the trail, and has not been visited yet.
