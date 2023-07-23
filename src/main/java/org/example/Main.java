@@ -22,6 +22,7 @@ public class Main extends GameApplication {
     private static int MAX_Y = 39;
     private static int MIN_X = 0;
     private static int MIN_Y = 0;
+    private static final int BOUND_TARGET = 11;
     private Entity player;
     private boolean moving = false;
     private Entity[][] cells;
@@ -64,6 +65,27 @@ public class Main extends GameApplication {
                 movePlayer(20, 0);
             }
         }, KeyCode.D);
+    }
+
+    static double distance(int x1, int y1, int x2, int y2) {
+        // Calculating distance
+        return Math.sqrt(Math.pow(x2 - x1, 2)
+                + Math.pow(y2 - y1, 2));
+    }
+
+    @Override
+    protected void initSettings(GameSettings gameSettings) {
+        gameSettings.setWidth(800);
+        gameSettings.setHeight(810);
+        gameSettings.setTitle("Paint I.O");
+        gameSettings.setVersion("0.1");
+        gameSettings.setIntroEnabled(false);
+    }
+
+    @Override
+    protected void onUpdate(double tpf) {
+        super.onUpdate(tpf);
+        updateGrid();
     }
 
     @Override
@@ -109,54 +131,13 @@ public class Main extends GameApplication {
 
         var viewPort = getGameScene().getViewport();
         viewPort.bindToEntity(player, 400, 400);
+        //viewPort.setZoom(1.83);
         //viewPort.setBounds(0,0,800,800);
 
 /*        Entity startingCell = cells[20][20];
         startingCell.getComponent(CellComponent.class).setOwner(player);
         territory.add(startingCell);*/
         System.out.println("STARTING TERRR:" + territory);
-    }
-
-    @Override
-    protected void initSettings(GameSettings gameSettings) {
-        gameSettings.setWidth(800);
-        gameSettings.setHeight(810);
-        gameSettings.setTitle("Paint I.O");
-        gameSettings.setVersion("0.1");
-        gameSettings.setIntroEnabled(false);
-    }
-
-    @Override
-    protected void onUpdate(double tpf) {
-        super.onUpdate(tpf);
-        updateGrid();
-    }
-
-    private void updateGrid() {
-        int cellX = (int) player.getX() / BLOCK_SIZE;
-        int cellY = (int) player.getY() / BLOCK_SIZE;
-
-        boolean closeToLeft = Math.abs(Math.abs(cellX) + MIN_X) < 5;
-        boolean closeToRight = Math.abs(cellX - MAX_X) < 5;
-        boolean closeToUp = Math.abs(Math.abs(cellY) + MIN_Y) < 5;
-        boolean closeToDown = Math.abs(cellY - MAX_Y) < 5;
-
-        if (closeToLeft) {
-            addCellToLeft();
-        }
-
-        if (closeToRight) {
-            addCellToRight();
-        }
-
-        if (closeToUp) {
-            addCellToUp();
-        }
-
-        if (closeToDown) {
-            addCellToDown();
-        }
-
     }
 
 
@@ -356,6 +337,37 @@ public class Main extends GameApplication {
         }
     }
 
+    private void updateGrid() {
+        int cellX = (int) player.getX() / BLOCK_SIZE;
+        int cellY = (int) player.getY() / BLOCK_SIZE;
+
+        boolean closeToLeft = distance(cellX, cellY, MIN_X, cellY) < BOUND_TARGET;
+        boolean closeToRight = distance(cellX, cellY, MAX_X, cellY) < BOUND_TARGET;
+        boolean closeToUp = distance(cellX, cellY, cellX, MIN_Y) < BOUND_TARGET;
+        boolean closeToDown = distance(cellX, cellY, cellX, MAX_Y) < BOUND_TARGET;
+
+        if (closeToLeft) {
+            addCellToLeft();
+        }
+
+        if (closeToRight) {
+            addCellToRight();
+        }
+
+        if (closeToUp) {
+            addCellToUp();
+        }
+
+        if (closeToDown) {
+            addCellToDown();
+        }
+
+    }
+
+    private void gameOver() {
+        moving = false;
+        FXGL.showMessage("Game Over!");
+    }
 
     private boolean verificationFloodFill(Entity startCell) {
         // The verification flood fill works like the regular flood fill but does not modify the grid.
@@ -402,11 +414,13 @@ public class Main extends GameApplication {
                         }
                     }*/
 
-                    // Check if the cell is within the grid, not part of the territory or the trail, and has not been visited yet.
-                    if (adjacentCellX >= 0 && adjacentCellX < mapOfCells.size() && adjacentCellY >= 0 && adjacentCellY < mapOfCells.get(adjacentCellX).size()) {
-                        Entity adjacentCell = mapOfCells.get(adjacentCellX).get(adjacentCellY);
-                        if (!territory.contains(adjacentCell) && !trail.contains(adjacentCell) && !visited.contains(adjacentCell)) {
-                            stack.push(adjacentCell);
+                    if (mapOfCells.get(adjacentCellX) != null) {
+                        // Check if the cell is within the grid, not part of the territory or the trail, and has not been visited yet.
+                        if (adjacentCellX >= 0 && adjacentCellX < mapOfCells.size() && adjacentCellY >= 0 && adjacentCellY < mapOfCells.get(adjacentCellX).size()) {
+                            Entity adjacentCell = mapOfCells.get(adjacentCellX).get(adjacentCellY);
+                            if (!territory.contains(adjacentCell) && !trail.contains(adjacentCell) && !visited.contains(adjacentCell)) {
+                                stack.push(adjacentCell);
+                            }
                         }
                     }
                 }
@@ -415,10 +429,5 @@ public class Main extends GameApplication {
 
         // The flood fill did not reach the edges of the grid, which means the start cell is inside the new territory.
         return true;
-    }
-
-    private void gameOver() {
-        moving = false;
-        FXGL.showMessage("Game Over!");
     }
 }
