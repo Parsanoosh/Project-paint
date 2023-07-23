@@ -18,11 +18,16 @@ import static com.almasb.fxgl.dsl.FXGL.*;
 
 public class Main extends GameApplication {
     private static final int BLOCK_SIZE = 20;
+    private static int MAX_X = 39;
+    private static int MAX_Y = 39;
+    private static int MIN_X = 0;
+    private static int MIN_Y = 0;
     private Entity player;
     private boolean moving = false;
     private Entity[][] cells;
-    private Stack<Entity> trail = new Stack<>();
-    private Set<Entity> territory = new HashSet<>();
+    private final HashMap<Integer, HashMap<Integer, Entity>> mapOfCells = new HashMap<>();
+    private final Stack<Entity> trail = new Stack<>();
+    private final Set<Entity> territory = new HashSet<>();
 
     public static void main(String[] args) {
         launch(args);
@@ -75,20 +80,36 @@ public class Main extends GameApplication {
         };
 
         player = spawn("player", 400, 400);
-        for (int y = 0; y < 40; y++) {
+/*        for (int y = 0; y < 40; y++) {
             for (int x = 0; x < 40; x++) {
                 cells[x][y] = spawn("cell", x * BLOCK_SIZE, y * BLOCK_SIZE);
             }
+        }*/
+
+
+        for (int x = 0; x <= MAX_X; x++) {
+            var map = new HashMap<Integer, Entity>();
+            for (int y = 0; y <= MAX_Y; y++) {
+                map.put(y, spawn("cell", x * BLOCK_SIZE, y * BLOCK_SIZE));
+            }
+            mapOfCells.put(x, map);
         }
 
-        for (int[] position : initialTerritoryPositions) {
+/*        for (int[] position : initialTerritoryPositions) {
             Entity cell = cells[position[0]][position[1]];
+            cell.getComponent(CellComponent.class).setOwner(player);
+            territory.add(cell);
+        }*/
+
+        for (int[] position : initialTerritoryPositions) {
+            Entity cell = mapOfCells.get(position[0]).get(position[1]);
             cell.getComponent(CellComponent.class).setOwner(player);
             territory.add(cell);
         }
 
         var viewPort = getGameScene().getViewport();
         viewPort.bindToEntity(player, 400, 400);
+        //viewPort.setBounds(0,0,800,800);
 
 /*        Entity startingCell = cells[20][20];
         startingCell.getComponent(CellComponent.class).setOwner(player);
@@ -105,6 +126,96 @@ public class Main extends GameApplication {
         gameSettings.setIntroEnabled(false);
     }
 
+    @Override
+    protected void onUpdate(double tpf) {
+        super.onUpdate(tpf);
+        updateGrid();
+    }
+
+    private void updateGrid() {
+        int cellX = (int) player.getX() / BLOCK_SIZE;
+        int cellY = (int) player.getY() / BLOCK_SIZE;
+
+        boolean closeToLeft = Math.abs(Math.abs(cellX) + MIN_X) < 5;
+        boolean closeToRight = Math.abs(cellX - MAX_X) < 5;
+        boolean closeToUp = Math.abs(Math.abs(cellY) + MIN_Y) < 5;
+        boolean closeToDown = Math.abs(cellY - MAX_Y) < 5;
+
+        if (closeToLeft) {
+            addCellToLeft();
+        }
+
+        if (closeToRight) {
+            addCellToRight();
+        }
+
+        if (closeToUp) {
+            addCellToUp();
+        }
+
+        if (closeToDown) {
+            addCellToDown();
+        }
+
+    }
+
+
+    private void addCellToUp() {
+        int updatedMinY = MIN_Y - 10;
+
+        for (int x = MIN_X; x <= MAX_X; x++) {
+            var map = mapOfCells.get(x);
+            for (int y = MIN_Y - 1; y >= updatedMinY; y--) {
+                map.put(y, spawn("cell", x * BLOCK_SIZE, y * BLOCK_SIZE));
+                System.out.println("UP X:" + x + " Y:" + y);
+            }
+            mapOfCells.put(x, map);
+        }
+        MIN_Y = updatedMinY;
+    }
+
+    private void addCellToDown() {
+        int updatedMaxY = MAX_Y + 10;
+
+        for (int x = MIN_X; x <= MAX_X; x++) {
+            var map = mapOfCells.get(x);
+            for (int y = MAX_Y; y <= updatedMaxY; y++) {
+                map.put(y, spawn("cell", x * BLOCK_SIZE, y * BLOCK_SIZE));
+                System.out.println("DOWN X:" + x + " Y:" + y);
+            }
+            mapOfCells.put(x, map);
+        }
+        MAX_Y = updatedMaxY;
+    }
+
+    private void addCellToRight() {
+        int updatedMaxX = MAX_X + 10;
+
+        for (int x = MAX_X; x <= updatedMaxX; x++) {
+            var map = new HashMap<Integer, Entity>();
+            for (int y = MIN_Y; y <= MAX_Y; y++) {
+                map.put(y, spawn("cell", x * BLOCK_SIZE, y * BLOCK_SIZE));
+                System.out.println("R X:" + x + " Y:" + y);
+            }
+            mapOfCells.put(x, map);
+        }
+        MAX_X = updatedMaxX;
+    }
+
+    private void addCellToLeft() {
+        int updatedMinX = MIN_X - 10;
+
+        for (int x = MIN_X; x >= updatedMinX; x--) {
+            var map = new HashMap<Integer, Entity>();
+            for (int y = MIN_Y; y <= MAX_Y; y++) {
+                map.put(y, spawn("cell", x * BLOCK_SIZE, y * BLOCK_SIZE));
+                System.out.println("L X:" + x + " Y:" + y);
+            }
+            mapOfCells.put(x, map);
+        }
+        MIN_X = updatedMinX;
+
+    }
 
     private void movePlayer(int dx, int dy) {
         if (moving) {
@@ -112,7 +223,9 @@ public class Main extends GameApplication {
         }
         int cellX = (int) player.getX() / BLOCK_SIZE;
         int cellY = (int) player.getY() / BLOCK_SIZE;
-        Entity currentCell = cells[cellX][cellY];
+        //Entity currentCell = cells[cellX][cellY];
+        Entity currentCell = mapOfCells.get(cellX).get(cellY);
+
 
         if (territory.contains(currentCell)) {
             if (!trail.empty()) {
@@ -136,19 +249,19 @@ public class Main extends GameApplication {
         double futureY = player.getY() + dy;
 
         // check if future position is within game boundary
-        if (futureX >= 0 && futureX <= (FXGL.getAppWidth() - BLOCK_SIZE)
-                && futureY >= 0 && futureY <= (FXGL.getAppHeight() - BLOCK_SIZE)) {
-            moving = true;
-            player.translateX(dx);
-            player.translateY(dy);
-            System.out.println("Player position: X = " + player.getX() + ", Y = " + player.getY());
-            FXGL.runOnce(new Runnable() {
-                @Override
-                public void run() {
-                    moving = false;
-                }
-            }, Duration.seconds(0.1));
-        }
+        /*if (futureX >= 0 && futureX <= (FXGL.getAppWidth() - BLOCK_SIZE)
+                && futureY >= 0 && futureY <= (FXGL.getAppHeight() - BLOCK_SIZE))*/ //{
+        moving = true;
+        player.translateX(dx);
+        player.translateY(dy);
+        System.out.println("Player position: X = " + player.getX() + ", Y = " + player.getY());
+        FXGL.runOnce(new Runnable() {
+            @Override
+            public void run() {
+                moving = false;
+            }
+        }, Duration.seconds(0.1));
+        //}
     }
 
     private void returnToTerritory() {
@@ -176,10 +289,23 @@ public class Main extends GameApplication {
                     // Compute the coordinates of the adjacent cell.
                     int cellX = startX + dx;
                     int cellY = startY + dy;
-
+                    int xLength = mapOfCells.size();
                     // Check if the cell is within the grid and not part of the territory or the trail.
-                    if (cellX >= 0 && cellX < cells.length && cellY >= 0 && cellY < cells[cellX].length) {
+/*                    if (cellX >= 0 && cellX < cells.length && cellY >= 0 && cellY < cells[cellX].length) {
                         Entity cell = cells[cellX][cellY];
+                        if (!territory.contains(cell) && !trail.contains(cell)) {
+                            // Use this cell as the starting point of the verification flood fill.
+                            if (verificationFloodFill(cell)) {
+                                // If the verification flood fill did not reach the edges of the grid,
+                                // the selected cell is inside the new territory.
+                                // Now, start the actual flood fill from this cell.
+                                floodFill(cell);
+                            }
+                        }
+                    }*/
+
+                    if (cellX >= 0 && cellX < xLength && cellY >= 0 && cellY < mapOfCells.get(cellX).size()) {
+                        Entity cell = mapOfCells.get(cellX).get(cellY);
                         if (!territory.contains(cell) && !trail.contains(cell)) {
                             // Use this cell as the starting point of the verification flood fill.
                             if (verificationFloodFill(cell)) {
@@ -217,10 +343,15 @@ public class Main extends GameApplication {
                 int cellX = (int) cell.getX() / BLOCK_SIZE;
                 int cellY = (int) cell.getY() / BLOCK_SIZE;
 
-                if (cellX > 0) queue.add(cells[cellX - 1][cellY]);
+/*                if (cellX > 0) queue.add(cells[cellX - 1][cellY]);
                 if (cellX < cells.length - 1) queue.add(cells[cellX + 1][cellY]);
                 if (cellY > 0) queue.add(cells[cellX][cellY - 1]);
-                if (cellY < cells[cellX].length - 1) queue.add(cells[cellX][cellY + 1]);
+                if (cellY < cells[cellX].length - 1) queue.add(cells[cellX][cellY + 1]);*/
+
+                if (cellX > 0) queue.add(mapOfCells.get(cellX - 1).get(cellY));
+                if (cellX < mapOfCells.size() - 1) queue.add(mapOfCells.get(cellX + 1).get(cellY));
+                if (cellY > 0) queue.add(mapOfCells.get(cellX).get(cellY - 1));
+                if (cellY < mapOfCells.get(cellY).size() - 1) queue.add(mapOfCells.get(cellX).get(cellY + 1));
             }
         }
     }
@@ -246,7 +377,12 @@ public class Main extends GameApplication {
             int cellY = (int) cell.getY() / BLOCK_SIZE;
 
             // Check if the flood fill has reached the edges of the grid.
-            if (cellX == 0 || cellX == cells.length - 1 || cellY == 0 || cellY == cells[cellX].length - 1) {
+/*            if (cellX == 0 || cellX == cells.length - 1 || cellY == 0 || cellY == cells[cellX].length - 1) {
+                // The flood fill has reached the edges of the grid, which means the start cell is outside the new territory.
+                return false;
+            }*/
+
+            if (cellX == 0 || cellX == mapOfCells.size() - 1 || cellY == 0 || cellY == mapOfCells.get(cellY).size() - 1) {
                 // The flood fill has reached the edges of the grid, which means the start cell is outside the new territory.
                 return false;
             }
@@ -256,10 +392,19 @@ public class Main extends GameApplication {
                     // Compute the coordinates of the adjacent cell.
                     int adjacentCellX = cellX + dx;
                     int adjacentCellY = cellY + dy;
+                    System.out.println("CELLX:" + cellX + " ADJ CELLX:" + adjacentCellX);
 
-                    // Check if the cell is within the grid, not part of the territory or the trail, and has not been visited yet.
+/*                    // Check if the cell is within the grid, not part of the territory or the trail, and has not been visited yet.
                     if (adjacentCellX >= 0 && adjacentCellX < cells.length && adjacentCellY >= 0 && adjacentCellY < cells[adjacentCellX].length) {
                         Entity adjacentCell = cells[adjacentCellX][adjacentCellY];
+                        if (!territory.contains(adjacentCell) && !trail.contains(adjacentCell) && !visited.contains(adjacentCell)) {
+                            stack.push(adjacentCell);
+                        }
+                    }*/
+
+                    // Check if the cell is within the grid, not part of the territory or the trail, and has not been visited yet.
+                    if (adjacentCellX >= 0 && adjacentCellX < mapOfCells.size() && adjacentCellY >= 0 && adjacentCellY < mapOfCells.get(adjacentCellX).size()) {
+                        Entity adjacentCell = mapOfCells.get(adjacentCellX).get(adjacentCellY);
                         if (!territory.contains(adjacentCell) && !trail.contains(adjacentCell) && !visited.contains(adjacentCell)) {
                             stack.push(adjacentCell);
                         }
