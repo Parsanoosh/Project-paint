@@ -2,15 +2,13 @@ package org.example;
 
 import com.almasb.fxgl.app.GameApplication;
 import com.almasb.fxgl.app.GameSettings;
-import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.input.Input;
 import com.almasb.fxgl.input.UserAction;
-import javafx.geometry.Point2D;
-import javafx.geometry.Rectangle2D;
 import javafx.scene.input.KeyCode;
 import javafx.util.Duration;
+import javafx.util.Pair;
 
 import java.util.*;
 
@@ -22,10 +20,15 @@ public class Main extends GameApplication {
     private static int MAX_Y = 39;
     private static int MIN_X = 0;
     private static int MIN_Y = 0;
+
+    private static final Pair<Integer, Integer> NORTH = new Pair<>(0, -1);
+    private static final Pair<Integer, Integer> SOUTH = new Pair<>(0, +1);
+    private static final Pair<Integer, Integer> EAST = new Pair<>(+1, 0);
+    private static final Pair<Integer, Integer> WEST = new Pair<>(-1, 0);
+
     private static final int BOUND_TARGET = 5;
     private Entity player;
     private boolean moving = false;
-    private Entity[][] cells;
     private final HashMap<Integer, HashMap<Integer, Entity>> mapOfCells = new HashMap<>();
     private final Stack<Entity> trail = new Stack<>();
     private final Set<Entity> territory = new HashSet<>();
@@ -67,11 +70,6 @@ public class Main extends GameApplication {
         }, KeyCode.D);
     }
 
-    static double distance(int x1, int y1, int x2, int y2) {
-        // Calculating distance
-        return Math.sqrt(Math.pow(x2 - x1, 2)
-                + Math.pow(y2 - y1, 2));
-    }
 
     @Override
     protected void initSettings(GameSettings gameSettings) {
@@ -82,10 +80,10 @@ public class Main extends GameApplication {
         gameSettings.setIntroEnabled(false);
     }
 
-    @Override
-    protected void onUpdate(double tpf) {
-        super.onUpdate(tpf);
-        updateGrid();
+    static double distance(int x1, int y1, int x2, int y2) {
+        // Calculating distance
+        return Math.sqrt(Math.pow(x2 - x1, 2)
+                + Math.pow(y2 - y1, 2));
     }
 
     @Override
@@ -118,12 +116,16 @@ public class Main extends GameApplication {
 
         var viewPort = getGameScene().getViewport();
         viewPort.bindToEntity(player, 400, 400);
-        //viewPort.setZoom(1.83);
+        viewPort.setZoom(1.83);
         //viewPort.setBounds(0,0,800,800);
 
-        System.out.println("STARTING TERRR:" + territory);
     }
 
+    @Override
+    protected void onUpdate(double tpf) {
+        super.onUpdate(tpf);
+        updateGrid();
+    }
 
     private void addCellToUp() {
         int updatedMinY = MIN_Y - 10;
@@ -182,6 +184,33 @@ public class Main extends GameApplication {
 
     }
 
+    private void updateGrid() {
+        int cellX = (int) player.getX() / BLOCK_SIZE;
+        int cellY = (int) player.getY() / BLOCK_SIZE;
+
+        boolean closeToLeft = distance(cellX, cellY, MIN_X, cellY) < BOUND_TARGET;
+        boolean closeToRight = distance(cellX, cellY, MAX_X, cellY) < BOUND_TARGET;
+        boolean closeToUp = distance(cellX, cellY, cellX, MIN_Y) < BOUND_TARGET;
+        boolean closeToDown = distance(cellX, cellY, cellX, MAX_Y) < BOUND_TARGET;
+
+        if (closeToLeft) {
+            addCellToLeft();
+        }
+
+        if (closeToRight) {
+            addCellToRight();
+        }
+
+        if (closeToUp) {
+            addCellToUp();
+        }
+
+        if (closeToDown) {
+            addCellToDown();
+        }
+
+    }
+
     private void movePlayer(int dx, int dy) {
         if (moving) {
             return;
@@ -195,7 +224,6 @@ public class Main extends GameApplication {
             if (!trail.empty()) {
                 // Player has returned to territory, claim the cells in the trail
                 returnToTerritory();
-                System.out.println("NEW TERRIROTY:" + territory);
             }
         } else {
             if (trail.contains(currentCell)) {
@@ -208,24 +236,17 @@ public class Main extends GameApplication {
 
         currentCell.getComponent(CellComponent.class).setOwner(player);
 
-
-        double futureX = player.getX() + dx;
-        double futureY = player.getY() + dy;
-
-        // check if future position is within game boundary
-        /*if (futureX >= 0 && futureX <= (FXGL.getAppWidth() - BLOCK_SIZE)
-                && futureY >= 0 && futureY <= (FXGL.getAppHeight() - BLOCK_SIZE))*/ //{
         moving = true;
         player.translateX(dx);
         player.translateY(dy);
-        System.out.println("Player position: X = " + player.getX() + ", Y = " + player.getY());
+        System.out.println("Player position: X = " + ((int) player.getX() / BLOCK_SIZE) + ", Y = " + ((int) player.getY() / BLOCK_SIZE));
         FXGL.runOnce(new Runnable() {
             @Override
             public void run() {
                 moving = false;
             }
         }, Duration.seconds(0.1));
-        //}
+
     }
 
     private void returnToTerritory() {
@@ -233,6 +254,7 @@ public class Main extends GameApplication {
             return;
         }
 
+        System.out.println("RETURN TO TERRITORY CALLED.");
         // Add all the cells in the trail to the territory and also to a list of starting points for the flood fill.
         List<Entity> startingPoints = new ArrayList<>();
         while (!trail.empty()) {
@@ -240,32 +262,38 @@ public class Main extends GameApplication {
             territory.add(cell);
             startingPoints.add(cell);
         }
-
+        System.out.println("STARTING POINTS:" + startingPoints);
         // Now, go through each cell in the starting points list.
         for (Entity startingPoint : startingPoints) {
             // Get the coordinates of the starting point.
             int startX = (int) startingPoint.getX() / BLOCK_SIZE;
             int startY = (int) startingPoint.getY() / BLOCK_SIZE;
 
-            // Go through each cell that is adjacent to the starting point.
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    // Compute the coordinates of the adjacent cell.
-                    int cellX = startX + dx;
-                    int cellY = startY + dy;
-                    int xLength = mapOfCells.size();
-                    // Check if the cell is within the grid and not part of the territory or the trail.
+            Pair<Integer, Integer> NORTH = new Pair<>(0, -1);
+            Pair<Integer, Integer> SOUTH = new Pair<>(0, +1);
+            Pair<Integer, Integer> EAST = new Pair<>(+1, 0);
+            Pair<Integer, Integer> WEST = new Pair<>(-1, 0);
+            List<Pair<Integer, Integer>> directions = new ArrayList<>();
+            directions.add(NORTH);
+            directions.add(SOUTH);
+            directions.add(EAST);
+            directions.add(WEST);
 
-                    if (cellX >= 0 && cellX < xLength && cellY >= 0 && cellY < mapOfCells.get(cellX).size()) {
-                        Entity cell = mapOfCells.get(cellX).get(cellY);
-                        if (!territory.contains(cell) && !trail.contains(cell)) {
-                            // Use this cell as the starting point of the verification flood fill.
-                            if (verificationFloodFill(cell)) {
-                                // If the verification flood fill did not reach the edges of the grid,
-                                // the selected cell is inside the new territory.
-                                // Now, start the actual flood fill from this cell.
-                                floodFill(cell);
-                            }
+            for (var pair : directions) {
+                int cellX = startX + pair.getKey();
+                int cellY = startY + pair.getValue();
+
+                boolean condition = cellX >= MIN_X && cellX < MAX_X && cellY >= MIN_Y && cellY < MAX_Y;
+                // Check if the cell is within the grid and not part of the territory or the trail.
+                if (condition) {
+                    Entity cell = mapOfCells.get(cellX).get(cellY);
+                    if (!territory.contains(cell)) {
+                        // Use this cell as the starting point of the verification flood fill.
+                        if (verification(cell)) {
+                            // If the verification flood fill did not reach the edges of the grid,
+                            // the selected cell is inside the new territory.
+                            // Now, start the actual flood fill from this cell.
+                            floodFill(cell);
                         }
                     }
                 }
@@ -296,39 +324,89 @@ public class Main extends GameApplication {
                 int cellY = (int) cell.getY() / BLOCK_SIZE;
 
 
-                if (cellX > 0) queue.add(mapOfCells.get(cellX - 1).get(cellY));
-                if (cellX < mapOfCells.size() - 1) queue.add(mapOfCells.get(cellX + 1).get(cellY));
-                if (cellY > 0) queue.add(mapOfCells.get(cellX).get(cellY - 1));
-                if (cellY < mapOfCells.get(cellY).size() - 1) queue.add(mapOfCells.get(cellX).get(cellY + 1));
+                if (cellX > MIN_X) queue.add(mapOfCells.get(cellX - 1).get(cellY));
+                if (cellX < MAX_X) queue.add(mapOfCells.get(cellX + 1).get(cellY));
+                if (cellY > MIN_Y) queue.add(mapOfCells.get(cellX).get(cellY - 1));
+                if (cellY < MAX_Y) queue.add(mapOfCells.get(cellX).get(cellY + 1));
             }
         }
     }
 
-    private void updateGrid() {
-        int cellX = (int) player.getX() / BLOCK_SIZE;
-        int cellY = (int) player.getY() / BLOCK_SIZE;
+    private boolean verification(Entity currentCell) {
+        boolean north = false;
+        boolean south = false;
+        boolean east = false;
+        boolean west = false;
 
-        boolean closeToLeft = distance(cellX, cellY, MIN_X, cellY) < BOUND_TARGET;
-        boolean closeToRight = distance(cellX, cellY, MAX_X, cellY) < BOUND_TARGET;
-        boolean closeToUp = distance(cellX, cellY, cellX, MIN_Y) < BOUND_TARGET;
-        boolean closeToDown = distance(cellX, cellY, cellX, MAX_Y) < BOUND_TARGET;
+        int cellX = (int) currentCell.getX() / BLOCK_SIZE;
+        int cellY = (int) currentCell.getY() / BLOCK_SIZE;
 
-        if (closeToLeft) {
-            addCellToLeft();
+        while (cellY > MIN_Y) {
+            cellY += NORTH.getValue();
+
+            if (mapOfCells.get(cellX) != null) {
+                Entity newCell = mapOfCells.get(cellX).get(cellY);
+
+                if (newCell != null) {
+                    if (territory.contains(newCell)) {
+                        north = true;
+                        break;
+                    }
+                }
+            }
+        }
+        cellX = (int) currentCell.getX() / BLOCK_SIZE;
+        cellY = (int) currentCell.getY() / BLOCK_SIZE;
+
+        while (cellX < MAX_X) {
+            cellX += EAST.getKey();
+
+            if (mapOfCells.get(cellX) != null) {
+                Entity newCell = mapOfCells.get(cellX).get(cellY);
+                if (newCell != null) {
+                    if (territory.contains(newCell)) {
+                        east = true;
+                        break;
+                    }
+                }
+            }
+        }
+        cellX = (int) currentCell.getX() / BLOCK_SIZE;
+        cellY = (int) currentCell.getY() / BLOCK_SIZE;
+
+        while (cellY < MAX_Y) {
+            cellY += SOUTH.getValue();
+
+            if (mapOfCells.get(cellX) != null) {
+                Entity newCell = mapOfCells.get(cellX).get(cellY);
+                if (newCell != null) {
+                    if (territory.contains(newCell)) {
+                        south = true;
+                        break;
+                    }
+                }
+            }
+        }
+        cellX = (int) currentCell.getX() / BLOCK_SIZE;
+        cellY = (int) currentCell.getY() / BLOCK_SIZE;
+
+        while (cellX > MIN_X) {
+            cellX += WEST.getKey();
+
+
+            if (mapOfCells.get(cellX) != null) {
+                Entity newCell = mapOfCells.get(cellX).get(cellY);
+                if (newCell != null) {
+                    if (territory.contains(newCell)) {
+                        west = true;
+                        break;
+                    }
+                }
+            }
         }
 
-        if (closeToRight) {
-            addCellToRight();
-        }
-
-        if (closeToUp) {
-            addCellToUp();
-        }
-
-        if (closeToDown) {
-            addCellToDown();
-        }
-
+        System.out.println("NORTH:" + north + " SOUTH:" + south + " EAST:" + east + " WEST:" + west + " ENTITY:" + currentCell);
+        return north && south && east && west;
     }
 
     private void gameOver() {
@@ -336,54 +414,4 @@ public class Main extends GameApplication {
         FXGL.showMessage("Game Over!");
     }
 
-    private boolean verificationFloodFill(Entity startCell) {
-        // The verification flood fill works like the regular flood fill but does not modify the grid.
-        // It only checks if the flood fill can reach the edges of the grid from the start cell.
-
-        // Create a set to keep track of the cells that have been visited by the verification flood fill.
-        Set<Entity> visited = new HashSet<>();
-
-        // Use a stack to implement the flood fill without recursion.
-        Stack<Entity> stack = new Stack<>();
-        stack.push(startCell);
-
-        while (!stack.empty()) {
-            Entity cell = stack.pop();
-            visited.add(cell);
-
-            // Get the coordinates of the cell.
-            int cellX = (int) cell.getX() / BLOCK_SIZE;
-            int cellY = (int) cell.getY() / BLOCK_SIZE;
-
-
-            if (cellX == 0 || cellX == mapOfCells.size() - 1 || cellY == 0 || cellY == mapOfCells.get(cellY).size() - 1) {
-                // The flood fill has reached the edges of the grid, which means the start cell is outside the new territory.
-                return false;
-            }
-
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    // Compute the coordinates of the adjacent cell.
-                    int adjacentCellX = cellX + dx;
-                    int adjacentCellY = cellY + dy;
-                    System.out.println("CELLX:" + cellX + " ADJ CELLX:" + adjacentCellX);
-
-                    // Check if the cell is within the grid, not part of the territory or the trail, and has not been visited yet.
-
-                    if (mapOfCells.get(adjacentCellX) != null) {
-                        // Check if the cell is within the grid, not part of the territory or the trail, and has not been visited yet.
-                        if (adjacentCellX >= 0 && adjacentCellX < mapOfCells.size() && adjacentCellY >= 0 && adjacentCellY < mapOfCells.get(adjacentCellX).size()) {
-                            Entity adjacentCell = mapOfCells.get(adjacentCellX).get(adjacentCellY);
-                            if (!territory.contains(adjacentCell) && !trail.contains(adjacentCell) && !visited.contains(adjacentCell)) {
-                                stack.push(adjacentCell);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // The flood fill did not reach the edges of the grid, which means the start cell is inside the new territory.
-        return true;
-    }
 }
