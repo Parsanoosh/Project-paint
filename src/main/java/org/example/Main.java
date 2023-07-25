@@ -6,6 +6,9 @@ import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.input.Input;
 import com.almasb.fxgl.input.UserAction;
+import com.almasb.fxgl.pathfinding.CellMoveComponent;
+import com.almasb.fxgl.pathfinding.CellState;
+import com.almasb.fxgl.pathfinding.astar.AStarGrid;
 import javafx.scene.input.KeyCode;
 import javafx.util.Duration;
 import javafx.util.Pair;
@@ -13,6 +16,8 @@ import javafx.util.Pair;
 import java.util.*;
 
 import static com.almasb.fxgl.dsl.FXGL.*;
+import static org.example.EntityType.CELL;
+import static org.example.EntityType.PLAYER;
 
 public class Main extends GameApplication {
     private static final int BLOCK_SIZE = 20;
@@ -36,6 +41,7 @@ public class Main extends GameApplication {
     public static void main(String[] args) {
         launch(args);
     }
+
 
     @Override
     protected void initInput() {
@@ -76,7 +82,7 @@ public class Main extends GameApplication {
         gameSettings.setWidth(800);
         gameSettings.setHeight(810);
         gameSettings.setTitle("Paint I.O");
-        gameSettings.setVersion("0.1");
+        gameSettings.setVersion("1.0");
         gameSettings.setIntroEnabled(false);
     }
 
@@ -117,8 +123,13 @@ public class Main extends GameApplication {
         var viewPort = getGameScene().getViewport();
         viewPort.bindToEntity(player, 400, 400);
         viewPort.setZoom(1.83);
-        //viewPort.setBounds(0,0,800,800);
+        //viewPort.setBounds(0,0,800,800)
 
+    }
+
+    @Override
+    protected void initGameVars(Map<String, Object> vars) {
+        vars.put("score", 0);
     }
 
     @Override
@@ -411,7 +422,7 @@ public class Main extends GameApplication {
 
     private void gameOver() {
         moving = false;
-        FXGL.showMessage("Game Over!");
+        getDialogService().showMessageBox("Game Over. Press OK to restart.", getGameController()::startNewGame);
     }
 
 }
