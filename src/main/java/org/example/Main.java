@@ -8,7 +8,9 @@ import com.almasb.fxgl.input.Input;
 import com.almasb.fxgl.input.UserAction;
 import com.almasb.fxgl.pathfinding.CellMoveComponent;
 import com.almasb.fxgl.pathfinding.CellState;
+import com.almasb.fxgl.pathfinding.astar.AStarCell;
 import com.almasb.fxgl.pathfinding.astar.AStarGrid;
+import com.almasb.fxgl.pathfinding.astar.AStarPathfinder;
 import javafx.scene.input.KeyCode;
 import javafx.util.Duration;
 import javafx.util.Pair;
@@ -16,8 +18,7 @@ import javafx.util.Pair;
 import java.util.*;
 
 import static com.almasb.fxgl.dsl.FXGL.*;
-import static org.example.EntityType.CELL;
-import static org.example.EntityType.PLAYER;
+import static org.example.EntityType.*;
 
 public class Main extends GameApplication {
     private static final int BLOCK_SIZE = 20;
@@ -26,6 +27,10 @@ public class Main extends GameApplication {
     private static int MIN_X = 0;
     private static int MIN_Y = 0;
 
+    private final int[][] initialTerritoryPositions = {
+            {19, 20}, {19, 19}, {20, 19}, {20, 20}, {21, 19},
+            {21, 20}, {21, 21}, {20, 21}, {19, 21}
+    };
     private static final Pair<Integer, Integer> NORTH = new Pair<>(0, -1);
     private static final Pair<Integer, Integer> SOUTH = new Pair<>(0, +1);
     private static final Pair<Integer, Integer> EAST = new Pair<>(+1, 0);
@@ -37,7 +42,7 @@ public class Main extends GameApplication {
     private final HashMap<Integer, HashMap<Integer, Entity>> mapOfCells = new HashMap<>();
     private final Stack<Entity> trail = new Stack<>();
     private final Set<Entity> territory = new HashSet<>();
-
+    private Action action = Action.NONE;
     public static void main(String[] args) {
         launch(args);
     }
@@ -50,28 +55,32 @@ public class Main extends GameApplication {
         input.addAction(new UserAction("Move Up") {
             @Override
             protected void onAction() {
-                movePlayer(0, -20);
+                movePlayer(Action.UP.dx, Action.UP.dy);
+                action = Action.UP;
             }
         }, KeyCode.W);
 
         input.addAction(new UserAction("Move Down") {
             @Override
             protected void onAction() {
-                movePlayer(0, 20);
+                movePlayer(Action.DOWN.dx, Action.DOWN.dy);
+                action = Action.DOWN;
             }
         }, KeyCode.S);
 
         input.addAction(new UserAction("Move Left") {
             @Override
             protected void onAction() {
-                movePlayer(-20, 0);
+                movePlayer(Action.LEFT.dx, Action.LEFT.dy);
+                action = Action.LEFT;
             }
         }, KeyCode.A);
 
         input.addAction(new UserAction("Move Right") {
             @Override
             protected void onAction() {
-                movePlayer(20, 0);
+                movePlayer(Action.RIGHT.dx, Action.RIGHT.dy);
+                action = Action.RIGHT;
             }
         }, KeyCode.D);
     }
@@ -99,13 +108,23 @@ public class Main extends GameApplication {
         getGameWorld()
                 .addEntityFactory(new GridFactory());
 
-        int[][] initialTerritoryPositions = {
-                {19, 20}, {19, 19}, {20, 19}, {20, 20}, {21, 19},
-                {21, 20}, {21, 21}, {20, 21}, {19, 21}
-        };
+        initLeveL();
+        initView();
+    }
 
+    @Override
+    protected void initGameVars(Map<String, Object> vars) {
+        vars.put("score", 0);
+    }
+
+    @Override
+    protected void onUpdate(double tpf) {
+        super.onUpdate(tpf);
+        updateGrid();
+    }
+
+    private void initLeveL() {
         player = spawn("player", 400, 400);
-
         for (int x = 0; x <= MAX_X; x++) {
             var map = new HashMap<Integer, Entity>();
             for (int y = 0; y <= MAX_Y; y++) {
@@ -119,24 +138,15 @@ public class Main extends GameApplication {
             cell.getComponent(CellComponent.class).setOwner(player);
             territory.add(cell);
         }
+    }
 
+    private void initView() {
         var viewPort = getGameScene().getViewport();
         viewPort.bindToEntity(player, 400, 400);
         viewPort.setZoom(1.83);
         //viewPort.setBounds(0,0,800,800)
-
     }
 
-    @Override
-    protected void initGameVars(Map<String, Object> vars) {
-        vars.put("score", 0);
-    }
-
-    @Override
-    protected void onUpdate(double tpf) {
-        super.onUpdate(tpf);
-        updateGrid();
-    }
 
     private void addCellToUp() {
         int updatedMinY = MIN_Y - 10;

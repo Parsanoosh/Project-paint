@@ -20,9 +20,15 @@ public class CellComponent extends Component {
 
     private Color playerColor(Entity player) {
         if (player == null) {
-            return Color.LIGHTGRAY;
+            return EntityType.CELL.getColor();
         } else {
-            return Color.BLUE; // Change this to your player's color
+            return switch ((EntityType) player.getType()) {
+                case PLAYER -> EntityType.PLAYER.getColor();
+                case ENEMY_1 -> EntityType.ENEMY_1.getColor();
+                case ENEMY_2 -> EntityType.ENEMY_2.getColor();
+                case ENEMY_3 -> EntityType.ENEMY_3.getColor();
+                default -> EntityType.CELL.getColor();
+            };
         }
     }
 
