@@ -17,6 +17,7 @@ import javafx.util.Pair;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static com.almasb.fxgl.dsl.FXGL.*;
 import static org.example.EntityType.*;
@@ -42,7 +43,7 @@ public class Main extends GameApplication {
     private static final int WIN_LIMIT = 1000;
     private static final CameraType camera = CameraType.NORMAL;
     private Entity player;
-    private List<Enemy> enemies = new ArrayList<>();
+    private List<Enemy> enemies = new CopyOnWriteArrayList<>();
     private boolean moving = false;
     private final HashMap<Integer, HashMap<Integer, Entity>> mapOfCells = new HashMap<>();
     private final Stack<Entity> trail = new Stack<>();
@@ -90,6 +91,20 @@ public class Main extends GameApplication {
                 action = Action.RIGHT;
             }
         }, KeyCode.D);
+
+        input.addAction(new UserAction("Gun A") {
+            @Override
+            protected void onAction() {
+                gunTypeA();
+            }
+        }, KeyCode.ENTER);
+
+        input.addAction(new UserAction("Gun B") {
+            @Override
+            protected void onAction() {
+                gunTypeB();
+            }
+        }, KeyCode.SPACE);
     }
 
     static double distance(int x1, int y1, int x2, int y2) {
@@ -222,6 +237,7 @@ public class Main extends GameApplication {
                 play("notification.wav");
             }
         }
+        enemies.removeIf(e -> e.getEntity() == null);
 
         currentCell.getComponent(CellComponent.class).setOwner(player);
 
@@ -274,6 +290,7 @@ public class Main extends GameApplication {
                     }
                 }
             }
+            enemies.removeIf(e -> e.getEntity() == null);
 
             if (this.trail.contains(currentCell)) {
                 gameOver();
@@ -557,11 +574,92 @@ public class Main extends GameApplication {
 
     }
 
-    private void gameOver() {
-        moving = false;
-        getDialogService().showMessageBox("Game Over!ssss Press OK to Exit.", getGameController()::exit);
-        play("losing.wav");
+    private void gunTypeA() {
+        int cellX = (int) player.getX();
+        int cellY = (int) player.getY();
+
+        var lastAction = action;
+        var incrementX = 0;
+        var incrementY = 0;
+
+        for (int i = 0; i < 5; i++) {
+            incrementX += action.dx;
+            incrementY += action.dy;
+        }
+
+        cellX += incrementX;
+        cellY += incrementY;
+
+        int cellXIndex = (int) cellX / BLOCK_SIZE;
+        int cellYIndex = (int) cellY / BLOCK_SIZE;
+
+        if (mapOfCells.get(cellXIndex) != null) {
+            if (mapOfCells.get(cellXIndex).get(cellYIndex) != null) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dy = -1; dy <= 1; dy++) {
+                        Entity cell = mapOfCells.get(cellXIndex + dx).get(cellYIndex + dy);
+
+                        for (Enemy enemy : enemies) {
+                            if (enemy.getEntity() != null && enemy.getEntity().getX() == cell.getX() && enemy.getEntity().getY() == cell.getY()) {
+                                enemy.gameOver(this.mapOfCells);
+                                enemy.setEntity(null);
+                                FXGL.getNotificationService().pushNotification("Enemy Killed! With Gun A.");
+                                play("notification.wav");
+                            }
+                        }
+                        enemies.removeIf(e -> e.getEntity() == null);
+
+                        cell.getComponent(CellComponent.class).setOwner(player);
+                        this.territory.add(cell);
+                    }
+                }
+            }
+        }
+        play("gunA.wav");
     }
 
+
+    private void gunTypeB() {
+        int cellX = (int) player.getX();
+        int cellY = (int) player.getY();
+
+        int cellXIndex = (int) cellX / BLOCK_SIZE;
+        int cellYIndex = (int) cellY / BLOCK_SIZE;
+
+        var lastAction = action;
+        var incrementX = cellX;
+        var incrementY = cellY;
+
+        if (lastAction != Action.NONE) {
+            while (incrementX >= MIN_X * BLOCK_SIZE && incrementX <= MAX_X * BLOCK_SIZE && incrementY >= MIN_Y * BLOCK_SIZE && incrementY <= MAX_Y * BLOCK_SIZE) {
+                incrementX += lastAction.dx;
+                incrementY += lastAction.dy;
+                if (mapOfCells.get(((int) incrementX / BLOCK_SIZE)) != null) {
+                    if (mapOfCells.get(((int) incrementX / BLOCK_SIZE)).get(((int) incrementY / BLOCK_SIZE)) != null) {
+                        Entity cell = mapOfCells.get(((int) incrementX / BLOCK_SIZE)).get(((int) incrementY / BLOCK_SIZE));
+
+                        for (Enemy enemy : enemies) {
+                            if (enemy.getEntity() != null && enemy.getEntity().getX() == cell.getX() && enemy.getEntity().getY() == cell.getY()) {
+                                enemy.gameOver(this.mapOfCells);
+                                enemy.setEntity(null);
+                                FXGL.getNotificationService().pushNotification("Enemy Killed! With Gun B.");
+                                play("notification.wav");
+                            }
+                        }
+                        enemies.removeIf(e -> e.getEntity() == null);
+                    }
+                }
+
+            }
+
+            play("gunB.wav");
+        }
+    }
+
+    private void gameOver() {
+        moving = false;
+        getDialogService().showMessageBox("Game Over! Press OK to Exit.", getGameController()::exit);
+        play("losing.wav");
+    }
 
 }
