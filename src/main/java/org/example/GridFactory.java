@@ -48,11 +48,18 @@ public class GridFactory implements EntityFactory {
     @Spawns("enemy_2")
     public Entity newEnemy_2(SpawnData data) {
         return FXGL.entityBuilder(data)
-                .view("maxpayne.png")
+                .view("barbie.png")
                 .type(EntityType.ENEMY_2)
                 .zIndex(99)
                 .build();
     }
 
-
+    @Spawns("enemy_3")
+    public Entity newEnemy_3(SpawnData data) {
+        return FXGL.entityBuilder(data)
+                .view("guts.png")
+                .type(EntityType.ENEMY_3)
+                .zIndex(99)
+                .build();
+    }
 }

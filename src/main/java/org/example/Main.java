@@ -40,6 +40,7 @@ public class Main extends GameApplication {
     private final Stack<Entity> trail = new Stack<>();
     private final Set<Entity> territory = new HashSet<>();
     private Action action = Action.NONE;
+    private int score = 0;
     private boolean smartAI = true;
 
     public static void main(String[] args) {
@@ -129,10 +130,16 @@ public class Main extends GameApplication {
         }
     }
 
+    @Override
+    protected void onPreInit() {
+        loopBGM("Daft Punk.mp3");
+    }
+
     private void initLeveL() {
         player = spawn("player", 300, 300);
         enemies.add(new Enemy(spawn("enemy_1", 5 * BLOCK_SIZE, 25 * BLOCK_SIZE), ENEMY_1));
         enemies.add(new Enemy(spawn("enemy_2", 25 * BLOCK_SIZE, 25 * BLOCK_SIZE), ENEMY_2));
+        enemies.add(new Enemy(spawn("enemy_3", 25 * BLOCK_SIZE, 5 * BLOCK_SIZE), ENEMY_3));
 
         for (int x = 0; x <= MAX_X; x++) {
             var map = new HashMap<Integer, Entity>();
@@ -151,6 +158,8 @@ public class Main extends GameApplication {
         for (Enemy enemy : enemies) {
             enemy.colorizeTerritory(mapOfCells);
         }
+
+        score = territory.size();
     }
 
     private void initView() {
@@ -186,6 +195,7 @@ public class Main extends GameApplication {
                 otherEnemy.gameOver(this.mapOfCells);
                 otherEnemy.setEntity(null);
                 FXGL.getNotificationService().pushNotification("Enemy Died.");
+                play("notification.wav");
             }
         }
 
@@ -217,15 +227,14 @@ public class Main extends GameApplication {
 
             if (enemy.getTerritory().contains(currentCell)) {
                 if (!enemy.getTrail().empty()) {
-                    System.out.println("Enemy Back");
                     returnToTerritory(enemy.getTrail(), enemy.getTerritory(), enemy.getEntity());
                 }
             } else {
                 if (enemy.getTrail().contains(currentCell)) {
-                    System.out.println("ENEMY OVER");
                     enemy.gameOver(this.mapOfCells);
                     enemy.setEntity(null);
                     FXGL.getNotificationService().pushNotification("Enemy Died.");
+                    play("notification.wav");
                     return;
                 }
                 enemy.getTrail().push(currentCell);
@@ -237,6 +246,7 @@ public class Main extends GameApplication {
                         otherEnemy.gameOver(this.mapOfCells);
                         otherEnemy.setEntity(null);
                         FXGL.getNotificationService().pushNotification("Enemy Died.");
+                        play("notification.wav");
                     }
                 }
             }
@@ -270,7 +280,6 @@ public class Main extends GameApplication {
             enemy.setMoving(true);
             enemy.getEntity().translateX(move.dx);
             enemy.getEntity().translateY(move.dy);
-            System.out.println("Enemy position: X = " + ((int) enemy.getEntity().getX() / BLOCK_SIZE) + ", Y = " + ((int) enemy.getEntity().getY() / BLOCK_SIZE));
             FXGL.runOnce(new Runnable() {
                 @Override
                 public void run() {
@@ -285,7 +294,7 @@ public class Main extends GameApplication {
             return;
         }
 
-        System.out.println("RETURN TO TERRITORY CALLED.");
+
         // Add all the cells in the trail to the territory and also to a list of starting points for the flood fill.
         List<Entity> startingPoints = new ArrayList<>();
         while (!trail.empty()) {
@@ -293,7 +302,7 @@ public class Main extends GameApplication {
             territory.add(cell);
             startingPoints.add(cell);
         }
-        System.out.println("STARTING POINTS:" + startingPoints);
+
         // Now, go through each cell in the starting points list.
         for (Entity startingPoint : startingPoints) {
             // Get the coordinates of the starting point.
@@ -325,15 +334,19 @@ public class Main extends GameApplication {
                             // the selected cell is inside the new territory.
                             // Now, start the actual flood fill from this cell.
                             floodFill(cell, territory, player);
+
                         }
                     }
                 }
             }
         }
+        if (player == this.player) {
+            score = territory.size();
+            play("bonus.wav");
+        }
     }
 
     private void floodFill(Entity startCell, Set<Entity> territory, Entity player) {
-        System.out.println("called floodFill:" + startCell);
         if (startCell.getComponent(CellComponent.class).getOwner() != null) {
             // This cell is already owned, so we don't need to fill it.
             return;
@@ -436,7 +449,6 @@ public class Main extends GameApplication {
             }
         }
 
-        System.out.println("NORTH:" + north + " SOUTH:" + south + " EAST:" + east + " WEST:" + west + " ENTITY:" + currentCell);
         return north && south && east && west;
     }
 
@@ -447,7 +459,6 @@ public class Main extends GameApplication {
             var map = mapOfCells.get(x);
             for (int y = MIN_Y - 1; y >= updatedMinY; y--) {
                 map.put(y, spawn("cell", x * BLOCK_SIZE, y * BLOCK_SIZE));
-                System.out.println("UP X:" + x + " Y:" + y);
             }
             mapOfCells.put(x, map);
         }
@@ -461,7 +472,6 @@ public class Main extends GameApplication {
             var map = mapOfCells.get(x);
             for (int y = MAX_Y; y <= updatedMaxY; y++) {
                 map.put(y, spawn("cell", x * BLOCK_SIZE, y * BLOCK_SIZE));
-                System.out.println("DOWN X:" + x + " Y:" + y);
             }
             mapOfCells.put(x, map);
         }
@@ -475,7 +485,6 @@ public class Main extends GameApplication {
             var map = new HashMap<Integer, Entity>();
             for (int y = MIN_Y; y <= MAX_Y; y++) {
                 map.put(y, spawn("cell", x * BLOCK_SIZE, y * BLOCK_SIZE));
-                System.out.println("R X:" + x + " Y:" + y);
             }
             mapOfCells.put(x, map);
         }
@@ -489,7 +498,7 @@ public class Main extends GameApplication {
             var map = new HashMap<Integer, Entity>();
             for (int y = MIN_Y; y <= MAX_Y; y++) {
                 map.put(y, spawn("cell", x * BLOCK_SIZE, y * BLOCK_SIZE));
-                System.out.println("L X:" + x + " Y:" + y);
+
             }
             mapOfCells.put(x, map);
         }
@@ -527,6 +536,7 @@ public class Main extends GameApplication {
     private void gameOver() {
         moving = false;
         getDialogService().showMessageBox("Game Over. Press OK to Exit.", getGameController()::exit);
+        play("losing.wav");
     }
 
 
