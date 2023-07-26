@@ -4,7 +4,7 @@ import javafx.scene.paint.Color;
 
 public enum EntityType {
 
-    PLAYER(Color.BLUE), CELL(Color.LIGHTGRAY), ENEMY_1(Color.RED),
+    PLAYER(Color.BLUE), CELL(Color.WHITE), ENEMY_1(Color.RED),
     ENEMY_2(Color.GREEN), ENEMY_3(Color.YELLOW);
 
     private Color color;
