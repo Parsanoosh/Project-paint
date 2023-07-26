@@ -51,7 +51,7 @@ public class Main extends GameApplication {
     private final Stack<Entity> trail = new Stack<>();
     private final Set<Entity> territory = new HashSet<>();
     private Action action = Action.NONE;
-    private boolean smartAI = false;
+    private boolean smartAI = true;
     private boolean gunB = false;
 
     public static void main(String[] args) {
@@ -108,6 +108,13 @@ public class Main extends GameApplication {
                 gunTypeA();
             }
         }, MouseButton.SECONDARY);
+
+        input.addAction(new UserAction("Gun B") {
+            @Override
+            protected void onAction() {
+                gunTypeB();
+            }
+        }, KeyCode.SPACE);
 
         input.addAction(new UserAction("Gun B Mouse") {
             @Override
