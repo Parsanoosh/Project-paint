@@ -38,8 +38,9 @@ public class Main extends GameApplication {
     private static final Pair<Integer, Integer> EAST = new Pair<>(+1, 0);
     private static final Pair<Integer, Integer> WEST = new Pair<>(-1, 0);
 
-    private static final int BOUND_TARGET = 5;
+    private static final int BOUND_TARGET = 8;
     private static final int WIN_LIMIT = 1000;
+    private static final CameraType camera = CameraType.NORMAL;
     private Entity player;
     private List<Enemy> enemies = new ArrayList<>();
     private boolean moving = false;
@@ -189,8 +190,7 @@ public class Main extends GameApplication {
     private void initView() {
         var viewPort = getGameScene().getViewport();
         viewPort.bindToEntity(player, 300, 300);
-        viewPort.setZoom(1.8);
-        //viewPort.setBounds(0,0,800,800)
+        viewPort.setZoom(camera.getZoom());
     }
 
     private void movePlayer(int dx, int dy) {
@@ -559,7 +559,7 @@ public class Main extends GameApplication {
 
     private void gameOver() {
         moving = false;
-        getDialogService().showMessageBox("Game Over. Press OK to Exit.", getGameController()::exit);
+        getDialogService().showMessageBox("Game Over!ssss Press OK to Exit.", getGameController()::exit);
         play("losing.wav");
     }
 
