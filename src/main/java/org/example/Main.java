@@ -6,11 +6,17 @@ import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.input.Input;
 import com.almasb.fxgl.input.UserAction;
+import javafx.beans.value.ObservableValue;
 import javafx.scene.input.KeyCode;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 import javafx.util.Duration;
 import javafx.util.Pair;
 
+import java.awt.*;
 import java.util.*;
+import java.util.List;
 
 import static com.almasb.fxgl.dsl.FXGL.*;
 import static org.example.EntityType.*;
@@ -40,8 +46,7 @@ public class Main extends GameApplication {
     private final Stack<Entity> trail = new Stack<>();
     private final Set<Entity> territory = new HashSet<>();
     private Action action = Action.NONE;
-    private int score = 0;
-    private boolean smartAI = true;
+    private boolean smartAI = false;
 
     public static void main(String[] args) {
         launch(args);
@@ -119,6 +124,7 @@ public class Main extends GameApplication {
     @Override
     protected void initGameVars(Map<String, Object> vars) {
         vars.put("block_size", BLOCK_SIZE);
+        vars.put("score", 0);
     }
 
     @Override
@@ -133,6 +139,17 @@ public class Main extends GameApplication {
     @Override
     protected void onPreInit() {
         loopBGM("Daft Punk.mp3");
+    }
+
+    @Override
+    protected void initUI() {
+        Text uiScore = new Text("Score:");
+        uiScore.setFont(Font.font("Arial", FontWeight.EXTRA_BOLD, 36));
+        uiScore.setTranslateX(getAppHeight() - getAppWidth() + 100);
+        uiScore.setTranslateY(50);
+        uiScore.textProperty().bind(getip("score").asString());
+
+        addUINode(uiScore);
     }
 
     private void initLeveL() {
@@ -159,13 +176,13 @@ public class Main extends GameApplication {
             enemy.colorizeTerritory(mapOfCells);
         }
 
-        score = territory.size();
+        set("score", territory.size());
     }
 
     private void initView() {
         var viewPort = getGameScene().getViewport();
         viewPort.bindToEntity(player, 300, 300);
-        viewPort.setZoom(1);
+        viewPort.setZoom(1.8);
         //viewPort.setBounds(0,0,800,800)
     }
 
@@ -341,7 +358,7 @@ public class Main extends GameApplication {
             }
         }
         if (player == this.player) {
-            score = territory.size();
+            set("score", territory.size());
             play("bonus.wav");
         }
     }
