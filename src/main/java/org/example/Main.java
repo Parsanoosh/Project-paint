@@ -8,6 +8,7 @@ import com.almasb.fxgl.input.Input;
 import com.almasb.fxgl.input.UserAction;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.MouseButton;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
@@ -41,7 +42,8 @@ public class Main extends GameApplication {
 
     private static final int BOUND_TARGET = 8;
     private static final int WIN_LIMIT = 1000;
-    private static final CameraType camera = CameraType.NORMAL;
+    private static final CameraType camera = CameraType.FAR;
+    private static final SpeedType speed = SpeedType.FAST;
     private Entity player;
     private List<Enemy> enemies = new CopyOnWriteArrayList<>();
     private boolean moving = false;
@@ -50,6 +52,7 @@ public class Main extends GameApplication {
     private final Set<Entity> territory = new HashSet<>();
     private Action action = Action.NONE;
     private boolean smartAI = false;
+    private boolean gunB = false;
 
     public static void main(String[] args) {
         launch(args);
@@ -99,12 +102,19 @@ public class Main extends GameApplication {
             }
         }, KeyCode.ENTER);
 
-        input.addAction(new UserAction("Gun B") {
+        input.addAction(new UserAction("Gun A Mouse") {
+            @Override
+            protected void onAction() {
+                gunTypeA();
+            }
+        }, MouseButton.SECONDARY);
+
+        input.addAction(new UserAction("Gun B Mouse") {
             @Override
             protected void onAction() {
                 gunTypeB();
             }
-        }, KeyCode.SPACE);
+        }, MouseButton.PRIMARY);
     }
 
     static double distance(int x1, int y1, int x2, int y2) {
@@ -115,8 +125,6 @@ public class Main extends GameApplication {
 
     @Override
     protected void initGame() {
-        getGameWorld()
-                .addEntityFactory(new SimpleFactory());
         getGameWorld()
                 .addEntityFactory(new GridFactory());
 
@@ -250,7 +258,7 @@ public class Main extends GameApplication {
             public void run() {
                 moving = false;
             }
-        }, Duration.seconds(0.1));
+        }, Duration.seconds(speed.speedOfPlayer));
 
     }
 
@@ -326,7 +334,7 @@ public class Main extends GameApplication {
                 public void run() {
                     enemy.setMoving(false);
                 }
-            }, Duration.seconds(1));
+            }, Duration.seconds(speed.speedOfEnemy));
         }
     }
 
@@ -334,9 +342,6 @@ public class Main extends GameApplication {
         if (trail.empty()) {
             return;
         }
-
-
-        // Add all the cells in the trail to the territory and also to a list of starting points for the flood fill.
         List<Entity> startingPoints = new ArrayList<>();
         while (!trail.empty()) {
             Entity cell = trail.pop();
@@ -344,9 +349,7 @@ public class Main extends GameApplication {
             startingPoints.add(cell);
         }
 
-        // Now, go through each cell in the starting points list.
         for (Entity startingPoint : startingPoints) {
-            // Get the coordinates of the starting point.
             int startX = (int) startingPoint.getX() / BLOCK_SIZE;
             int startY = (int) startingPoint.getY() / BLOCK_SIZE;
 
@@ -365,17 +368,11 @@ public class Main extends GameApplication {
                 int cellY = startY + pair.getValue();
 
                 boolean condition = cellX >= MIN_X && cellX < MAX_X && cellY >= MIN_Y && cellY < MAX_Y;
-                // Check if the cell is within the grid and not part of the territory or the trail.
                 if (condition) {
                     Entity cell = mapOfCells.get(cellX).get(cellY);
                     if (!territory.contains(cell)) {
-                        // Use this cell as the starting point of the verification flood fill.
                         if (verification(cell, territory)) {
-                            // If the verification flood fill did not reach the edges of the grid,
-                            // the selected cell is inside the new territory.
-                            // Now, start the actual flood fill from this cell.
                             floodFill(cell, territory, player);
-
                         }
                     }
                 }
@@ -389,11 +386,9 @@ public class Main extends GameApplication {
 
     private void floodFill(Entity startCell, Set<Entity> territory, Entity player) {
         if (startCell.getComponent(CellComponent.class).getOwner() != null) {
-            // This cell is already owned, so we don't need to fill it.
             return;
         }
 
-        // Queue is used to implement flood fill iteratively instead of recursively.
         Queue<Entity> queue = new LinkedList<>();
         queue.add(startCell);
 
@@ -620,6 +615,10 @@ public class Main extends GameApplication {
 
 
     private void gunTypeB() {
+        if (gunB) {
+            return;
+        }
+
         int cellX = (int) player.getX();
         int cellY = (int) player.getY();
 
@@ -653,6 +652,13 @@ public class Main extends GameApplication {
             }
 
             play("gunB.wav");
+            gunB = true;
+            FXGL.runOnce(new Runnable() {
+                @Override
+                public void run() {
+                    gunB = false;
+                }
+            }, Duration.seconds(3));
         }
     }
 
