@@ -39,6 +39,7 @@ public class Main extends GameApplication {
     private static final Pair<Integer, Integer> WEST = new Pair<>(-1, 0);
 
     private static final int BOUND_TARGET = 5;
+    private static final int WIN_LIMIT = 1000;
     private Entity player;
     private List<Enemy> enemies = new ArrayList<>();
     private boolean moving = false;
@@ -134,6 +135,12 @@ public class Main extends GameApplication {
         for (Enemy enemy : enemies) {
             moveEnemy(enemy);
         }
+
+        if (geti("score") >= WIN_LIMIT) {
+            play("success.wav");
+            getDialogService().showMessageBox("You Win!", getGameController()::exit);
+        }
+
     }
 
     @Override
